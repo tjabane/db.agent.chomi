@@ -1,21 +1,33 @@
+from pathlib import Path
+import os
 from dotenv import load_dotenv
 from deepagents import create_deep_agent
-load_dotenv()
+from sqlalchemy import create_engine
+from sqlalchemy.engine import URL
+from langchain_community.utilities import SQLDatabase
+load_dotenv(override=True)
 
-def get_weather(city: str) -> str:
-    """Get weather for a given city."""
-    return f"It's always sunny in {city}!"
+system_prompt = (Path(__file__).parent / "AGENTS.md").read_text()
 
-
-agent = create_deep_agent(
-    model="openai:gpt-4o",
-    tools=[get_weather],
-    system_prompt="You are a helpful assistant",
+_engine = create_engine(
+    URL.create("mssql+pyodbc", query={"odbc_connect": os.environ["MSSQL_CONNECTION_STRING"]})
 )
+db = SQLDatabase(_engine)
+
+
+def create_chomi_agent():
+    """Create a Chomi agent."""
+    return create_deep_agent(
+        model="openai:gpt-4o",
+        tools=[],
+        system_prompt=system_prompt,
+    )
+
 
 def main():
-    result = agent.invoke({"messages": [{"role": "user", "content": "what is the weather in sf"}]} )
-    print(result["messages"][-1].content)
+    print(f"Dialect: {db.dialect}")
+    print(f"Available tables: {db.get_usable_table_names()}")
+    print(f'Sample output: {db.run("SELECT * FROM [Lebenkele].[dbo].[Customers]")}')
 
 
 if __name__ == "__main__":
